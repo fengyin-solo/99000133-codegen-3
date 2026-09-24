@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/risk.php';
 require_once __DIR__ . '/../config/database.php';
 requireAdmin();
 
@@ -56,6 +57,9 @@ $pendingCount = getPendingReportCount();
 $totalReportCount = $db->query("SELECT COUNT(*) FROM reports")->fetchColumn();
 $deletedCount = $db->query("SELECT COUNT(*) FROM reports WHERE status = 1")->fetchColumn();
 $ignoredCount = $db->query("SELECT COUNT(*) FROM reports WHERE status = 2")->fetchColumn();
+$messagePendingCount = riskGetPendingCount($db);
+$manualReviewCount = riskGetManualReviewCount($db);
+$staleCount = riskGetStaleCount($db);
 
 include __DIR__ . '/header.php';
 ?>
@@ -67,7 +71,10 @@ include __DIR__ . '/header.php';
         </div>
         <nav class="sidebar-nav">
             <a href="index.php" class="sidebar-link">📝 留言管理</a>
-            <a href="index.php?status=0" class="sidebar-link">⏳ 待审核 <?= $pendingCount > 0 ? "($pendingCount)" : '' ?></a>
+            <a href="index.php?status=0" class="sidebar-link">⏳ 待审核 <?= $messagePendingCount > 0 ? "($messagePendingCount)" : '' ?></a>
+            <a href="index.php?queue=manual" class="sidebar-link">🔎 人工复核队列 <?= $manualReviewCount > 0 ? "($manualReviewCount)" : '' ?></a>
+            <a href="index.php?queue=stale" class="sidebar-link">🔄 待重算 <?= $staleCount > 0 ? "($staleCount)" : '' ?></a>
+            <a href="risk_rules.php" class="sidebar-link">⚖️ 分级规则</a>
             <a href="reports.php" class="sidebar-link active">🚩 举报管理</a>
             <a href="reports.php?status=0" class="sidebar-link">⏳ 待处理 <?= $pendingCount > 0 ? "($pendingCount)" : '' ?></a>
             <a href="../index.php" class="sidebar-link" target="_blank">🌐 查看前台</a>

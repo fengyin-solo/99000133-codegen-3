@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/risk.php';
 require_once __DIR__ . '/../config/database.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -58,6 +59,11 @@ try {
     $db = getDB();
     $stmt = $db->prepare("INSERT INTO messages (nickname, phone, type, title, content, image, status) VALUES (?, ?, ?, ?, ?, ?, 0)");
     $stmt->execute([$nickname, $phone ?: null, $type, $title, $content, $imagePath]);
+    $messageId = intval($db->lastInsertId());
+
+    // 首次风险分级；分级服务失败时保留默认级别并标记待重算，不阻断留言提交
+    riskGradeNewMessage($db, $messageId);
+
     jsonResponse(0, '留言提交成功，等待审核');
 } catch (Exception $e) {
     jsonResponse(500, '服务器错误，请稍后重试');

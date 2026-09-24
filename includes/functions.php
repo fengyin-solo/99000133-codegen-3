@@ -234,3 +234,20 @@ function getPendingReportCount() {
     $db = getDB();
     return $db->query("SELECT COUNT(*) FROM reports WHERE status = 0")->fetchColumn();
 }
+
+/**
+ * 获取风险级别样式类
+ */
+function getRiskLevelClass($level) {
+    $map = ['low' => 'low', 'medium' => 'medium', 'high' => 'high'];
+    return 'risk-' . ($map[$level] ?? 'low');
+}
+
+/**
+ * 风险标签可能被规则配置覆盖，展示时以库里的 risk_label 为准，
+ * 级别样式以 risk_level 为准（同类留言在不同查看条件下得到相同级别）
+ */
+function getRiskDisplayLabel($level, $label = '') {
+    $label = trim((string)$label);
+    return $label !== '' ? $label : riskLevelLabel($level);
+}

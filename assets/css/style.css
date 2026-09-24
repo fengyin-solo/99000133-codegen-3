@@ -833,3 +833,92 @@ a:hover { color: var(--primary-dark); }
         display: none;
     }
 }
+
+/* ========== 风险分级 ========== */
+.risk-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: .75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.risk-badge.risk-low {
+    background: #dcfce7;
+    color: #15803d;
+}
+.risk-badge.risk-medium {
+    background: #fef3c7;
+    color: #b45309;
+}
+.risk-badge.risk-high {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+.risk-stale-tag {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: .7rem;
+    font-weight: 600;
+    background: #e5e7eb;
+    color: #4b5563;
+    cursor: help;
+}
+.risk-queue-tag {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: .7rem;
+    font-weight: 600;
+    background: #fee2e2;
+    color: #b91c1c;
+}
+.risk-priority-text {
+    margin-top: 4px;
+    font-size: .7rem;
+    color: #6b7280;
+}
+.risk-rules-tip {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: .88rem;
+    line-height: 1.7;
+    color: #1e40af;
+}
+.risk-rules-form {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    box-shadow: var(--shadow-sm);
+}
+.risk-rules-form h3 {
+    font-size: .95rem;
+    margin: 20px 0 12px;
+    padding-top: 16px;
+    border-top: 1px dashed #e5e7eb;
+}
+.risk-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px 20px;
+}
+.risk-form-grid .form-group {
+    margin-bottom: 12px;
+}
+.risk-form-grid .tier-actions {
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: 12px;
+}
+@media (max-width: 768px) {
+    .risk-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
