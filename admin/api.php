@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/risk_service.php';
 requireAdmin();
 
 header('Content-Type: application/json; charset=utf-8');
@@ -15,6 +16,39 @@ switch ($action) {
         $stmt->execute([$id]);
         $msg = $stmt->fetch();
         if (!$msg) jsonResponse(1, '留言不存在');
+
+        // 风险信息（分级服务不可用时不影响查看详情）
+        $risk = new RiskService($db);
+        if ($risk->isAvailable()) {
+            $riskMeta = riskLevelMeta($msg['risk_level'] ?? 'low');
+            $labelCodes = array_filter(explode(',', (string)($msg['risk_labels'] ?? '')));
+            $labels = [];
+            foreach ($labelCodes as $code) {
+                $lm = riskLabelMeta($code);
+                $labels[] = ['code' => $code, 'text' => $lm['text'], 'class' => $lm['class']];
+            }
+            $factors = [];
+            if (!empty($msg['risk_factors'])) {
+                $decoded = json_decode($msg['risk_factors'], true);
+                if (is_array($decoded)) $factors = $decoded;
+            }
+            $msg['risk'] = [
+                'level' => $msg['risk_level'],
+                'level_text' => $msg['risk_level'] ? $riskMeta['text'] : '未分级',
+                'level_class' => $riskMeta['class'],
+                'score' => intval($msg['risk_score']),
+                'priority' => intval($msg['risk_priority']),
+                'queue' => $riskMeta['queue'],
+                'labels' => $labels,
+                'factors' => $factors,
+                'rule_version' => $msg['risk_rule_version'] !== null ? intval($msg['risk_rule_version']) : null,
+                'calculated_at' => $msg['risk_calculated_at'],
+                'stale' => !empty($msg['risk_stale']),
+            ];
+        } else {
+            $msg['risk'] = null;
+        }
+
         $msg['type_label'] = getTypeLabel($msg['type']);
         $msg['status_label'] = getStatusLabel($msg['status']);
         $msg['content'] = nl2br(cleanInput($msg['content']));
@@ -29,6 +63,12 @@ switch ($action) {
         if (!in_array($status, [1, 2])) jsonResponse(1, '无效状态');
         $stmt = $db->prepare("UPDATE messages SET status = ? WHERE id = ?");
         $stmt->execute([$status, $id]);
+
+        // 审核处置改变了“历史处置结果”，同身份的其余待审留言按同一口径重新分级
+        $risk = new RiskService($db);
+        if ($risk->isAvailable()) {
+            $risk->recalculatePending();
+        }
         jsonResponse(0, '操作成功');
         break;
 
@@ -43,6 +83,12 @@ switch ($action) {
             if (file_exists($imgFile)) unlink($imgFile);
         }
         $db->prepare("DELETE FROM messages WHERE id = ?")->execute([$id]);
+
+        // 删除会改变同身份留言的重复发布计数，按当前口径重算
+        $risk = new RiskService($db);
+        if ($risk->isAvailable()) {
+            $risk->recalculateAll();
+        }
         jsonResponse(0, '删除成功');
         break;
 
@@ -98,12 +144,52 @@ switch ($action) {
 
             $db->commit();
 
+            // 举报处置结果会影响“待处理举报数”这一分级因子，待审留言按同一口径重算
+            $risk = new RiskService($db);
+            if ($risk->isAvailable()) {
+                $risk->recalculatePending();
+            }
+
             $statusMsg = [1 => '已删除留言', 2 => '已忽略举报', 3 => '已驳回举报'];
             jsonResponse(0, $statusMsg[$status] . '成功');
         } catch (Exception $e) {
             $db->rollBack();
             jsonResponse(1, '操作失败: ' . $e->getMessage());
         }
+        break;
+
+    case 'risk_rules_get':
+        // 取当前口径与历史版本
+        $risk = new RiskService($db);
+        if (!$risk->isAvailable()) jsonResponse(1, '风险分级功能未安装，请先执行 database/migration_add_risk_grading.sql');
+        $current = $risk->getCurrentRules();
+        jsonResponse(0, 'ok', [
+            'current_version' => $current['version'],
+            'rules' => $current['rules'],
+            'versions' => $risk->getAllVersions(),
+        ]);
+        break;
+
+    case 'risk_rules_save':
+        // 调整分级口径：写新版本并按同一口径重算全部记录
+        $rules = json_decode($_POST['rules'] ?? '', true);
+        if (!is_array($rules)) jsonResponse(1, '规则参数格式不正确');
+        $remark = trim($_POST['remark'] ?? '');
+        $risk = new RiskService($db);
+        try {
+            $res = $risk->saveRules($rules, $remark, $_SESSION['admin_id'] ?? null);
+            jsonResponse(0, "口径已更新至 v{$res['version']}，已按新标准重算 {$res['recalculated']} 条记录", $res);
+        } catch (Exception $e) {
+            jsonResponse(1, $e->getMessage());
+        }
+        break;
+
+    case 'risk_recalculate':
+        // 手动触发全量重算（如分级服务曾失败、存在待重算记录）
+        $risk = new RiskService($db);
+        if (!$risk->isAvailable()) jsonResponse(1, '风险分级功能未安装');
+        $count = $risk->recalculateAll();
+        jsonResponse(0, "重算完成，成功 {$count} 条记录", ['recalculated' => $count]);
         break;
 
     default:

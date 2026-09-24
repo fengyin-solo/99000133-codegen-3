@@ -234,3 +234,40 @@ function getPendingReportCount() {
     $db = getDB();
     return $db->query("SELECT COUNT(*) FROM reports WHERE status = 0")->fetchColumn();
 }
+
+/**
+ * 风险级别徽标 HTML（级别缺失时按待重算/未分级展示，不阻断页面）
+ */
+function renderRiskLevelBadge($msg) {
+    $stale = !empty($msg['risk_stale']);
+    $level = $msg['risk_level'] ?? null;
+
+    if ($level === null || $level === '') {
+        if ($stale) {
+            return '<span class="risk-badge risk-stale" title="分级服务暂不可用，待重新计算">待重算</span>';
+        }
+        return '<span class="risk-badge risk-none">未分级</span>';
+    }
+
+    $meta = riskLevelMeta($level);
+    $title = '处置队列：' . $meta['queue'];
+    $html = '<span class="risk-badge ' . $meta['class'] . '" title="' . $title . '">' . $meta['text'] . '</span>';
+    if ($stale) {
+        $html .= ' <span class="risk-badge risk-stale" title="级别按旧口径/原结果保留，待重新计算">待重算</span>';
+    }
+    return $html;
+}
+
+/**
+ * 风险标签徽标组 HTML
+ */
+function renderRiskLabels($labelsCsv) {
+    $codes = array_filter(explode(',', (string)($labelsCsv ?? '')));
+    if (!$codes) return '<span class="text-muted">-</span>';
+    $html = '';
+    foreach ($codes as $code) {
+        $meta = riskLabelMeta($code);
+        $html .= '<span class="risk-tag ' . $meta['class'] . '">' . $meta['text'] . '</span> ';
+    }
+    return trim($html);
+}

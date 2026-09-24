@@ -67,7 +67,9 @@ include __DIR__ . '/header.php';
         </div>
         <nav class="sidebar-nav">
             <a href="index.php" class="sidebar-link">📝 留言管理</a>
-            <a href="index.php?status=0" class="sidebar-link">⏳ 待审核 <?= $pendingCount > 0 ? "($pendingCount)" : '' ?></a>
+            <a href="index.php?status=0" class="sidebar-link">⏳ 待审核</a>
+            <a href="index.php?queue=review" class="sidebar-link">🔴 人工复核队列</a>
+            <a href="risk_rules.php" class="sidebar-link">⚖️ 分级口径设置</a>
             <a href="reports.php" class="sidebar-link active">🚩 举报管理</a>
             <a href="reports.php?status=0" class="sidebar-link">⏳ 待处理 <?= $pendingCount > 0 ? "($pendingCount)" : '' ?></a>
             <a href="../index.php" class="sidebar-link" target="_blank">🌐 查看前台</a>
